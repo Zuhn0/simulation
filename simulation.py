@@ -1,71 +1,77 @@
-import numpy as np
 import argparse
+import random
+import numpy as np
 
-def simulate_regions(num_regions, mean_length, std_length,
-                     gene_types, gene_probs, mean_gap, std_gap, output_file):
-    """
-    Simulate non-overlapping BED regions across chr1–chr22 with specified parameters.
-    Output columns: chromosome, start, end, length, gene_type
-    """
-    gene_probs = np.array(gene_probs, dtype=float)
-    gene_probs = gene_probs / gene_probs.sum()  # Normalize proportions
-
+def simulate_bed(num_regions, mean_len, sd_len, gene_entries, mean_chrom_gap, sd_chrom_gap, output):
     chroms = [f"chr{i}" for i in range(1, 23)]
-    base = num_regions // 22
-    extras = num_regions % 22
-    regions_per_chr = [base + (1 if i < extras else 0) for i in range(22)]
+    total_chroms = len(chroms)
 
-    with open(output_file, 'w') as fout:
-        for idx, count in enumerate(regions_per_chr, start=1):
-            if count == 0:
-                continue
-            
-            lengths = np.random.normal(mean_length, std_length, size=count)
-            lengths = np.round(lengths).astype(int)
-            lengths[lengths < 1] = 1  # enforce minimum of 1 bp
+    # Parse gene list and weights
+    if len(gene_entries) % 2 != 0:
+        raise ValueError("Each gene must be followed by its percentage.")
+    genes = gene_entries[::2]
+    weights = list(map(float, gene_entries[1::2]))
+    if sum(weights) != 100:
+        raise ValueError("Gene percentages must sum to 100.")
 
-            gaps = np.random.normal(mean_gap, std_gap, size=count)
-            gaps = np.round(gaps).astype(int)
-            gaps[gaps < 0] = 0
+    regions_per_chrom = [num_regions // total_chroms] * total_chroms
+    for i in range(num_regions % total_chroms):
+        regions_per_chrom[i] += 1
 
-            increments = np.empty(count, dtype=int)
-            increments[0] = 0  # First region starts at 0
-            if count > 1:
-                increments[1:] = lengths[:-1] + gaps[1:]
-            starts = np.cumsum(increments)
-            ends = starts + lengths
+    regions = []
+    global_position = 0
 
-            gene_choices = np.random.choice(gene_types, size=count, p=gene_probs)
+    for chrom_index, chrom in enumerate(chroms):
+        num_regions_this_chrom = regions_per_chrom[chrom_index]
 
-            lines = []
-            chrom = f"chr{idx}"
-            for s, e, l, g in zip(starts, ends, lengths, gene_choices):
-                lines.append(f"{chrom}\t{s}\t{e}\t{l}\t{g}\n")
-            fout.write(''.join(lines))
+        if chrom_index > 0:
+            gap = 0
+            while gap < 1:
+                gap = int(round(np.random.normal(mean_chrom_gap, sd_chrom_gap)))
+            global_position += gap
 
-def parse_args():
-    parser = argparse.ArgumentParser(description="Simulate BED regions efficiently")
-    parser.add_argument("--regions", type=int, default=10000, help="Total number of regions")
-    parser.add_argument("--mean_length", type=float, default=1000, help="Mean region length")
-    parser.add_argument("--std_length", type=float, default=100, help="Standard deviation of region length")
-    parser.add_argument("--gene_types", nargs='+', default=["gene", "pseudogene"],
-                        help="List of gene type labels")
-    parser.add_argument("--gene_props", nargs='+', type=float, default=[0.7, 0.3],
-                        help="Proportions for each gene type (same order as gene_types)")
-    parser.add_argument("--mean_gap", type=float, default=100, help="Mean gap between regions")
-    parser.add_argument("--std_gap", type=float, default=10, help="Std dev of gap between regions")
-    parser.add_argument("--output", type=str, default="regions.bed", help="Output BED filename")
-    return parser.parse_args()
+        current_pos = global_position
+
+        for _ in range(num_regions_this_chrom):
+            length = 0
+            while length < 1:
+                length = int(round(np.random.normal(mean_len, sd_len)))
+
+            start = current_pos
+            end = start + length
+            gene = random.choices(genes, weights=weights, k=1)[0]
+
+            regions.append((chrom, start, end, length, gene))
+            current_pos = end + 1
+
+        global_position = current_pos
+
+    chrom_index_map = {f"chr{i}": i for i in range(1, 23)}
+    regions.sort(key=lambda x: (chrom_index_map.get(x[0], 0), x[1]))
+
+    with open(output, 'w') as f:
+        for chrom, start, end, length, gene in regions:
+            f.write(f"{chrom}\t{start}\t{end}\t{length}\t{gene}\n")
 
 if __name__ == "__main__":
-    args = parse_args()
-    simulate_regions(
-        num_regions=args.regions,
-        mean_length=args.mean_length,
-        std_length=args.std_length,
-        gene_types=args.gene_types,
-        gene_probs=args.gene_props,
-        mean_gap=args.mean_gap,
-        std_gap=args.std_gap,
-        output_file=args.output
+    parser = argparse.ArgumentParser(description="Simulate BED file with gene type percentages")
+    parser.add_argument("-n", "--number", type=int, required=True, help="Total number of regions")
+    parser.add_argument("-L", "--mean_length", type=float, required=True, help="Mean region length")
+    parser.add_argument("-S", "--sd_length", type=float, required=True, help="Standard deviation of region length")
+    parser.add_argument("-g", "--genes", nargs="+", required=True,
+                        help="List of gene types and their percentages. Example: -g ADCY10 40 MRPL19 30 C2orf3 30")
+    parser.add_argument("-D", "--mean_chrom_gap", type=float, required=True, help="Mean distance between chromosomes")
+    parser.add_argument("-T", "--sd_chrom_gap", type=float, required=True, help="Standard deviation of chromosome gap")
+    parser.add_argument("-o", "--output", default="simulated_output.bed", help="Output BED file name")
+
+    args = parser.parse_args()
+
+    simulate_bed(
+        args.number,
+        args.mean_length,
+        args.sd_length,
+        args.genes,
+        args.mean_chrom_gap,
+        args.sd_chrom_gap,
+        args.output
     )
