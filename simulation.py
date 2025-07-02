@@ -3,7 +3,7 @@ import random
 import numpy as np
 
 def simulate_bed(num_regions, mean_len, sd_len, gene_entries, mean_chrom_gap, sd_chrom_gap, output):
-    chroms = [f"chr{i}" for i in range(1, 23)]
+    chroms = [f"chr{i}" for i in range(1, 2006)]
     total_chroms = len(chroms)
 
     # Parse gene list and weights
