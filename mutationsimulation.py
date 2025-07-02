@@ -149,8 +149,17 @@ def main():
             new_rec = [chrom, pos, pos+length, length, gene]
             bed_records.append(new_rec)
 
-    # Always sort records before writing output
-    bed_records.sort(key=lambda rec: (rec[0], rec[1]))
+    # Always sort records before writing output using proper chromosome sorting
+    def chr_sort_key(rec):
+        chrom = rec[0]
+        if chrom.startswith("chr"):
+            chrom = chrom[3:]
+        try:
+            return (int(chrom), rec[1])
+        except ValueError:
+            return (chrom, rec[1])
+
+    bed_records.sort(key=chr_sort_key)
 
     try:
         with open(args.outfile, 'w') as out:
