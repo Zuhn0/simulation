@@ -44,7 +44,6 @@ def main():
     # Perform deletions
     if args.delete:
         for reg in args.delete:
-            # Determine if it's coordinates or gene name
             if ":" in reg and "-" in reg:
                 chrom, rest = reg.split(":", 1)
                 start_str, end_str = rest.split("-", 1)
@@ -53,10 +52,8 @@ def main():
                 except ValueError:
                     print(f"Error: Invalid coordinates in delete '{reg}'")
                     sys.exit(1)
-                matches = [rec for rec in bed_records
-                           if rec[0]==chrom and rec[1]==start and rec[2]==end]
+                matches = [rec for rec in bed_records if rec[0]==chrom and rec[1]==start and rec[2]==end]
             else:
-                # Treat as gene name
                 matches = [rec for rec in bed_records if rec[4] == reg]
             if not matches:
                 print(f"Error: Deletion target '{reg}' not found.")
@@ -69,7 +66,6 @@ def main():
         for reg in args.dup:
             parts = reg.split("@")
             src = parts[0]
-            # Parse source coordinates
             if ":" in src and "-" in src:
                 chrom, rest = src.split(":", 1)
                 start_str, end_str = rest.split("-", 1)
@@ -78,8 +74,7 @@ def main():
                 except ValueError:
                     print(f"Error: Invalid coordinates in dup '{reg}'")
                     sys.exit(1)
-                matches = [rec for rec in bed_records
-                           if rec[0]==chrom and rec[1]==start and rec[2]==end]
+                matches = [rec for rec in bed_records if rec[0]==chrom and rec[1]==start and rec[2]==end]
             else:
                 print(f"Error: Invalid format for dup '{reg}'. Use CHR:START-END@... ")
                 sys.exit(1)
@@ -93,7 +88,6 @@ def main():
             if len(parts) > 1 and parts[1]:
                 dest = parts[1]
                 if ":" in dest:
-                    # e.g. chrX:pos
                     new_chrom, start2 = dest.split(":",1)
                     try:
                         new_start = int(start2)
@@ -101,7 +95,6 @@ def main():
                         print(f"Error: Invalid new start in dup '{reg}'")
                         sys.exit(1)
                 else:
-                    # just a number => same chromosome
                     try:
                         new_start = int(dest)
                     except ValueError:
@@ -109,7 +102,6 @@ def main():
                         sys.exit(1)
                 length = orig[2] - orig[1]
                 new_end = new_start + length
-            # Add duplicated region
             new_length = new_end - new_start
             bed_records.append([new_chrom, new_start, new_end, new_length, orig[4]])
 
@@ -124,17 +116,14 @@ def main():
                 except ValueError:
                     print(f"Error: Invalid coordinates in invert '{reg}'")
                     sys.exit(1)
-                matches = [rec for rec in bed_records 
-                           if rec[0]==chrom and rec[1]==start and rec[2]==end]
+                matches = [rec for rec in bed_records if rec[0]==chrom and rec[1]==start and rec[2]==end]
             else:
                 matches = [rec for rec in bed_records if rec[4] == reg]
             if not matches:
                 print(f"Error: Inversion target '{reg}' not found.")
                 sys.exit(1)
             rec = matches[0]
-            # Reverse gene name
             rec[4] = rec[4][::-1]
-            # (Keep coordinates unchanged)
 
     # Perform insertions
     if args.insert:
@@ -149,26 +138,20 @@ def main():
             except ValueError:
                 print(f"Error: Invalid number in insert '{reg}'")
                 sys.exit(1)
-            # Check for overlap
-            overlap = [rec for rec in bed_records 
-                       if rec[0]==chrom and rec[1] < pos < rec[2]]
+            overlap = [rec for rec in bed_records if rec[0]==chrom and rec[1] < pos < rec[2]]
             if overlap:
                 print(f"Error: Insertion at {chrom}:{pos} overlaps existing gene {overlap[0][4]}")
                 sys.exit(1)
-            # Shift downstream genes
             for rec in bed_records:
                 if rec[0]==chrom and rec[1] >= pos:
                     rec[1] += length
                     rec[2] += length
-            # Add the new insertion region
             new_rec = [chrom, pos, pos+length, length, gene]
             bed_records.append(new_rec)
 
-    # Sort records by chromosome and start position
-    # (Assume chromosome names sort lexicographically; adjust if needed)
+    # Always sort records before writing output
     bed_records.sort(key=lambda rec: (rec[0], rec[1]))
 
-    # Write output BED file
     try:
         with open(args.outfile, 'w') as out:
             for chrom, start, end, length, gene in bed_records:
