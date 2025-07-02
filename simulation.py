@@ -46,7 +46,7 @@ def simulate_bed(num_regions, mean_len, sd_len, gene_entries, mean_chrom_gap, sd
 
         global_position = current_pos
 
-    chrom_index_map = {f"chr{i}": i for i in range(1, 23)}
+    chrom_index_map = {f"chr{i}": i for i in range(1, 2006)}
     regions.sort(key=lambda x: (chrom_index_map.get(x[0], 0), x[1]))
 
     with open(output, 'w') as f:
