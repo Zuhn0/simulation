@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 import argparse, sys
 
 def parse_args():
@@ -18,14 +17,12 @@ def parse_args():
 def main():
     args = parse_args()
 
-    # Read input BED file
     try:
         with open(args.infile) as f:
             bed_records = []
             for line in f:
                 line = line.strip()
-                if not line: 
-                    continue
+                if not line: continue
                 cols = line.split("\t")
                 if len(cols) != 5:
                     print(f"Error: Invalid BED line (expected 5 columns): {line}")
@@ -41,17 +38,12 @@ def main():
         print(f"Error: Input file '{args.infile}' not found.")
         sys.exit(1)
 
-    # Perform deletions
+    # Handle deletions
     if args.delete:
         for reg in args.delete:
             if ":" in reg and "-" in reg:
                 chrom, rest = reg.split(":", 1)
-                start_str, end_str = rest.split("-", 1)
-                try:
-                    start = int(start_str); end = int(end_str)
-                except ValueError:
-                    print(f"Error: Invalid coordinates in delete '{reg}'")
-                    sys.exit(1)
+                start, end = map(int, rest.split("-", 1))
                 matches = [rec for rec in bed_records if rec[0]==chrom and rec[1]==start and rec[2]==end]
             else:
                 matches = [rec for rec in bed_records if rec[4] == reg]
@@ -61,23 +53,14 @@ def main():
             for rec in matches:
                 bed_records.remove(rec)
 
-    # Perform duplications
+    # Handle duplications
     if args.dup:
         for reg in args.dup:
             parts = reg.split("@")
             src = parts[0]
-            if ":" in src and "-" in src:
-                chrom, rest = src.split(":", 1)
-                start_str, end_str = rest.split("-", 1)
-                try:
-                    start = int(start_str); end = int(end_str)
-                except ValueError:
-                    print(f"Error: Invalid coordinates in dup '{reg}'")
-                    sys.exit(1)
-                matches = [rec for rec in bed_records if rec[0]==chrom and rec[1]==start and rec[2]==end]
-            else:
-                print(f"Error: Invalid format for dup '{reg}'. Use CHR:START-END@... ")
-                sys.exit(1)
+            chrom, rest = src.split(":", 1)
+            start, end = map(int, rest.split("-", 1))
+            matches = [rec for rec in bed_records if rec[0]==chrom and rec[1]==start and rec[2]==end]
             if not matches:
                 print(f"Error: Duplication target '{src}' not found.")
                 sys.exit(1)
@@ -88,44 +71,51 @@ def main():
             if len(parts) > 1 and parts[1]:
                 dest = parts[1]
                 if ":" in dest:
-                    new_chrom, start2 = dest.split(":",1)
-                    try:
-                        new_start = int(start2)
-                    except ValueError:
-                        print(f"Error: Invalid new start in dup '{reg}'")
-                        sys.exit(1)
+                    new_chrom, new_start = dest.split(":")
+                    new_start = int(new_start)
                 else:
-                    try:
-                        new_start = int(dest)
-                    except ValueError:
-                        print(f"Error: Invalid new start in dup '{reg}'")
-                        sys.exit(1)
+                    new_start = int(dest)
                 length = orig[2] - orig[1]
                 new_end = new_start + length
+            else:
+                length = orig[2] - orig[1]
+                new_end = new_start + length
+
+            # Shift downstream genes
+            for rec in bed_records:
+                if rec[0] == new_chrom and rec[1] >= new_start:
+                    rec[1] += length
+                    rec[2] += length
+            for rec in bed_records:
+                if rec[0] > new_chrom:
+                    rec[1] += length
+                    rec[2] += length
+
             new_length = new_end - new_start
             bed_records.append([new_chrom, new_start, new_end, new_length, orig[4]])
 
-    # Perform inversions
+       # Handle inversions
     if args.invert:
         for reg in args.invert:
             if ":" in reg and "-" in reg:
                 chrom, rest = reg.split(":", 1)
-                start_str, end_str = rest.split("-", 1)
-                try:
-                    start = int(start_str); end = int(end_str)
-                except ValueError:
-                    print(f"Error: Invalid coordinates in invert '{reg}'")
-                    sys.exit(1)
+                start, end = map(int, rest.split("-", 1))
                 matches = [rec for rec in bed_records if rec[0]==chrom and rec[1]==start and rec[2]==end]
             else:
+                # Match ALL records by gene name
                 matches = [rec for rec in bed_records if rec[4] == reg]
             if not matches:
                 print(f"Error: Inversion target '{reg}' not found.")
                 sys.exit(1)
-            rec = matches[0]
-            rec[4] = rec[4][::-1]
+            for rec in matches:
+                # Flip start and end literally
+                rec[1], rec[2] = rec[2], rec[1]  # reversed coordinates
+                rec[3] = -(abs(rec[1] - rec[2]))  # negative length
+                # Gene name stays the same
 
-    # Perform insertions
+
+
+            # Handle insertions
     if args.insert:
         for reg in args.insert:
             parts = reg.split(":", 3)
@@ -133,11 +123,8 @@ def main():
                 print(f"Error: Insert format must be CHR:POS:LENGTH:GENE, got '{reg}'")
                 sys.exit(1)
             chrom, pos_str, length_str, gene = parts
-            try:
-                pos = int(pos_str); length = int(length_str)
-            except ValueError:
-                print(f"Error: Invalid number in insert '{reg}'")
-                sys.exit(1)
+            pos = int(pos_str)
+            length = int(length_str)
             overlap = [rec for rec in bed_records if rec[0]==chrom and rec[1] < pos < rec[2]]
             if overlap:
                 print(f"Error: Insertion at {chrom}:{pos} overlaps existing gene {overlap[0][4]}")
@@ -146,10 +133,14 @@ def main():
                 if rec[0]==chrom and rec[1] >= pos:
                     rec[1] += length
                     rec[2] += length
+            for rec in bed_records:
+                if rec[0] > chrom:
+                    rec[1] += length
+                    rec[2] += length
             new_rec = [chrom, pos, pos+length, length, gene]
             bed_records.append(new_rec)
 
-    # Always sort records before writing output using proper chromosome sorting
+    # Sort output
     def chr_sort_key(rec):
         chrom = rec[0]
         if chrom.startswith("chr"):
@@ -158,9 +149,9 @@ def main():
             return (int(chrom), rec[1])
         except ValueError:
             return (chrom, rec[1])
-
     bed_records.sort(key=chr_sort_key)
 
+    # Write to output file
     try:
         with open(args.outfile, 'w') as out:
             for chrom, start, end, length, gene in bed_records:
