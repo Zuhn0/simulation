@@ -38,22 +38,28 @@ def main():
         print(f"Error: Input file '{args.infile}' not found.")
         sys.exit(1)
 
-    # Handle deletions
+       # Perform deletions
     if args.delete:
         for reg in args.delete:
-            if ":" in reg and "-" in reg:
-                chrom, rest = reg.split(":", 1)
-                start, end = map(int, rest.split("-", 1))
-                matches = [rec for rec in bed_records if rec[0]==chrom and rec[1]==start and rec[2]==end]
+            if "@" in reg:
+                gene, start_str = reg.split("@", 1)
+                try:
+                    start = int(start_str)
+                except ValueError:
+                    print(f"Error: Invalid start coordinate in delete '{reg}'")
+                    sys.exit(1)
+                matches = [rec for rec in bed_records if rec[4] == gene and rec[1] == start]
             else:
-                matches = [rec for rec in bed_records if rec[4] == reg]
+                print(f"Error: For deletion, use format GENE@START (e.g. G1@502)")
+                sys.exit(1)
+
             if not matches:
                 print(f"Error: Deletion target '{reg}' not found.")
                 sys.exit(1)
             for rec in matches:
                 bed_records.remove(rec)
 
-    # Handle duplications
+        # duplications
     if args.dup:
         for reg in args.dup:
             parts = reg.split("@")
