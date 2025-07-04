@@ -145,29 +145,41 @@ HOW TO RUN AND CHECK THIS SCRIPT FURTHER :
 Lets check for inversion of genes :  "python3 mutationsimulation.py short.bed mutated_output.bed --invert G1"
 
   mutated_output.bed 
+                          chr20   39218   40213   995     G2
+                          chr21   41100   42043   943     G3
+                          chr22   43383   44274   891     G4
+                          chr23   46487   45464   -1023   G1
+                          chr24   47530   48995   1465    G2
+                          chr25   49796   50719   923     G4
+                          chr26   52061   53071   1010    G2
+                          chr27   54244   55272   1028    G3
+                          chr28   57314   56081   -1233   G1
+                          chr29   58654   59173   519     G2
+                          chr30   59929   60645   716     G4
+                          chr31   61900   63090   1190    G3
+                          chr32   64189   65370   1181    G4
+                          chr33   66358   67771   1413    G3
+                          chr34   68824   69765   941     G3
+                          chr35   70683   71678   995     G2 
+                          chr36   73980   72812   -1168   G1
+                          chr37   76307   75225   -1082   G1
+                          chr38   77293   78035   742     G4
+                          chr39   80318   79211   -1107   G1
+                          chr40   82238   81350   -888    G1
+                          chr41   83762   82939   -823    G1
 
-            chr20   39218   40213   995     G2
-            chr21   41100   42043   943     G3
-            chr22   43383   44274   891     G4
-            chr23   46487   45464   -1023   G1
-            chr24   47530   48995   1465    G2
-            chr25   49796   50719   923     G4
-            chr26   52061   53071   1010    G2
-            chr27   54244   55272   1028    G3
-            chr28   57314   56081   -1233   G1
-            chr29   58654   59173   519     G2
-            chr30   59929   60645   716     G4
-            chr31   61900   63090   1190    G3
-            chr32   64189   65370   1181    G4
-            chr33   66358   67771   1413    G3
-            chr34   68824   69765   941     G3
-            chr35   70683   71678   995     G2
-            chr36   73980   72812   -1168   G1
-            chr37   76307   75225   -1082   G1
-            chr38   77293   78035   742     G4
-            chr39   80318   79211   -1107   G1
-            chr40   82238   81350   -888    G1
-            chr41   83762   82939   -823    G1
+  Now convert the bed file to query using "python3 convert_bed_to_query.py mutated_output.bed"
+  output : "G2,G3,G4,G1,G2,G4,G2,G3,G1,G2,G4,G3,G4,G3,G3,G2,G1,G1,G4,G1,G1,G1 995,943,891,-1023,1465,923,1010,1028,-1233,519,716,1190,1181,1413,941,995,-1168,-1082,742,-1107,-888,-823 887,1340,2213,2066,801,1342,1173,2042,2573,756,1255,1099,988,1053,918,2302,3495,2068,2283,3027,2412"
+
+  Now search for this mutation in 'simulated_output.bed' file with " python3 updated_find_pattern_first_p-value_fixed.py simulated_output.bed "G2,G3,G4,G1,G2,G4,G2,G3,G1,G2,G4,G3,G4,G3,G3,G2,G1,G1,G4,G1,G1,G1" "995,943,891,-1023,1465,923,1010,1028,-1233,519,716,1190,1181,1413,941,995,-1168,-1082,742,-1107,-888,-823" "887,1340,2213,2066,801,1342,1173,2042,2573,756,1255,1099,988,1053,918,2302,3495,2068,2283,3027,2412" "200" "200" " 
+
+  Output :
+Start   End     Direction       Exact_Length_Matches    Exact_Diff_Matches      Within_Tolerance_Length_Matches Within_Tolerance_Diff_Matches   P_value Interval_Values
+20      41      forward 0       11      9       0       0.50000 chr20_39218_40213_995_G2_chr21_41100_42043_943_G3_chr22_43383_44274_891_G4_chr23_45464_46487_1023_G1_chr24_47530_48995_1465_G2_chr25_49796_50719_923_G4_chr26_52061_53071_1010_G2_chr27_54244_55272_1028_G3_chr28_56081_57314_1233_G1_chr29_58654_59173_519_G2_chr30_59929_60645_716_G4_chr31_61900_63090_1190_G3_chr32_64189_65370_1181_G4_chr33_66358_67771_1413_G3_chr34_68824_69765_941_G3_chr35_70683_71678_995_G2_chr36_72812_73980_1168_G1_chr37_75225_76307_1082_G1_chr38_77293_78035_742_G4_chr39_79211_80318_1107_G1_chr40_81350_82238_888_G1_chr41_82939_83762_823_G1
+
+//THE STUDY SHOWS THAT updated_find_pattern_first_p-value_fixed.py FILE ONLY SEARCHES WHEN MUTATION IS DUPLICATION AND INVERSION . If the mutation is DELETION OR INSERSION It do not work .
+  
+  
    
 
      
