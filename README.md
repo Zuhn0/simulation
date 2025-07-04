@@ -2,7 +2,7 @@ Input : python3 simulation.py -n 100 -L 1000 -S 200 -g G1 25 G2 25 G3 25 G4 25 -
 output : //FILE GETS CREATED with NAME  "simulated_output.bed"
               simulated_output.bed: 
                 chr1    0       1142    1142    G2
-                chr2    2209    3197    988     G3
+                chr2    2209    3197    988     G3 
                 chr3    4373    5303    930     G4
                 chr4    6053    7176    1123    G2
                 chr5    8302    9198    896     G3
