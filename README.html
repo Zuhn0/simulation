@@ -133,7 +133,7 @@ Extracting the individual part of file using "extract_rows_from_bed.py" file usi
             chr41   82939   83762   823     G1
 
 Now performing mutation on short.bed file using command :
-For Deletion :   "python3 mutationsimulation.py short.bed mutated_output.bed --d G1@56081" //G1 at start of 56081 gets deleted 
+For Deletion :   "python3 mutationsimulation.py short.bed mutated_output.bed -d G1@56081" //G1 at start of 56081 gets deleted 
 For Inversion :  "python3 mutationsimulation.py short.bed mutated_output.bed --invert G1" //All  G1 genes gets inverted
 For Insertion :  "python3 mutationsimulation.py short.bed mutated_output.bed --insert chr20:40214:20:G50" // chr20:Start:size:name  , rest all positions gets shifted further
 For Duplication: " python3 mutationsimulation.py short.bed mutated_output.bed  --dup chr20:39218-40213@chr21:40214" // chrtoduplicate:start-end@chratwhichtocopy:start   ,rest all positions gets adjusted
