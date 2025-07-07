@@ -1,172 +1,111 @@
 import sys
-from scipy.stats import binom_test
+import math
 
-def read_file(file_name):
-    """
-    Reads a five-column file and returns the contents as a list of lists.
-    Each inner list represents a line from the file.
-    """
-    data = []
-    with open(file_name, 'r') as file:
-        for line in file:
-            data.append(line.strip().split())
-    return data
+def read_bed_file(filename):
+    with open(filename, 'r') as f:
+        return [line.strip().split() for line in f if line.strip()]
 
-def reverse_complement(pattern):
-    """
-    Returns the reverse complement of a given pattern.
-    Assuming the pattern consists of nucleotides (A, T, C, G).
-    """
-    complement = {'A': 'T', 'T': 'A', 'C': 'G', 'G': 'C'}
-    return [complement.get(base, base) for base in reversed(pattern)]
+def compute_differences(data):
+    differences = []
+    for i in range(1, len(data)):
+        diff = int(data[i][1]) - int(data[i-1][2])
+        differences.append(diff)
+    return differences
 
-def find_pattern(data, pattern):
-    """
-    Identifies all consecutive occurrences of a pattern (both forward and reverse) 
-    in the fifth column of the file data.
-    :param data: List of rows (each row is a list of columns from the file)
-    :param pattern: List of values to match in the fifth column
-    :return: List of tuples with the row numbers, direction, and the rows where the pattern occurs consecutively
-    """
-    pattern_length = len(pattern)
-    reverse_pattern = reverse_complement(pattern)
-    
-    fifth_column = [row[4] for row in data]  # Extracting the 5th column (index 4)
+def extract_lengths(data):
+    return [int(row[3]) for row in data]
 
-    occurrences = []
-    for i in range(len(fifth_column) - pattern_length + 1):
-        forward_match = fifth_column[i:i + pattern_length] == pattern
-        reverse_match = fifth_column[i:i + pattern_length] == reverse_pattern
-        
-        if forward_match:
-            occurrences.append((i + 1, i + pattern_length, 'forward', data[i:i + pattern_length]))  # Forward match
-        elif reverse_match:
-            occurrences.append((i + 1, i + pattern_length, 'reverse', data[i:i + pattern_length]))  # Reverse match
+def extract_genes(data):
+    return [row[4] for row in data]
 
-    return occurrences
+def match_pattern(query_genes, query_lengths, query_diffs, segment, tol_len, tol_diff):
+    segment_genes = [row[4] for row in segment]
+    segment_lengths = extract_lengths(segment)
+    segment_diffs = compute_differences(segment)
 
-def compute_difference(row, prev_row):
-    """
-    Computes the difference between the second column of the current row
-    and the third column of the previous row. Handles the case when prev_row is None.
-    """
-    if prev_row is None:
-        return None  # No previous row exists
-    try:
-        current_val = float(row[1])  # Second column of current row
-        previous_val = float(prev_row[2])  # Third column of previous row
-        return current_val - previous_val
-    except ValueError:
-        return None  # If columns are not numeric, return None
+    inserted = []
+    deleted = []
+    match_len = match_diff = match_exact = 0
+    i = j = 0
 
-def is_within_tolerance(actual, expected, tolerance):
-    """
-    Checks if the actual value is within the tolerance range of the expected value.
-    Returns a tuple (bool, deviation), where 'bool' indicates if it's within tolerance,
-    and 'deviation' is the amount the actual value deviates from the expected.
-    """
-    deviation = abs(actual - expected)
-    return deviation <= tolerance, deviation
+    while i < len(query_genes) and j < len(segment_genes):
+        if query_genes[i] == segment_genes[j]:
+            diff_match = abs(query_diffs[i-1] - segment_diffs[j-1]) <= tol_diff if i > 0 and j > 0 else True
+            len_match = abs(query_lengths[i] - segment_lengths[j]) <= tol_len
+            if diff_match:
+                match_diff += 1
+            if len_match:
+                match_len += 1
+            if len_match and diff_match:
+                match_exact += 1
+            i += 1
+            j += 1
+        elif query_genes[i] not in segment_genes[j:j+2]:
+            deleted.append((i, query_genes[i]))
+            i += 1
+        else:
+            inserted.append((j, segment_genes[j]))
+            j += 1
 
-def calculate_p_value(num_matches, total_tries):
-    """
-    Calculates the p-value using a binomial test.
-    """
-    if total_tries > 0:
-        return binom_test(num_matches, total_tries, 0.5, alternative='greater')
-    return 1.0  # If no trials, return a neutral p-value
+    while i < len(query_genes):
+        deleted.append((i, query_genes[i]))
+        i += 1
+    while j < len(segment_genes):
+        inserted.append((j, segment_genes[j]))
+        j += 1
 
-def main(file_name, pattern_str, lengths_str, differences_str, length_tolerance_str, difference_tolerance_str):
-    # Reading the file
-    data = read_file(file_name)
-    
-    # Parsing inputs
-    pattern = pattern_str.split(',')
-    target_lengths = list(map(float, lengths_str.split(',')))
-    target_differences = list(map(float, differences_str.split(',')))
-    length_tolerance = float(length_tolerance_str)
-    difference_tolerance = float(difference_tolerance_str)
+    p_value = math.exp(-1 * (match_exact + 0.5 * match_len + 0.25 * match_diff))
+    return {
+        "match_exact": match_exact,
+        "match_len": match_len,
+        "match_diff": match_diff,
+        "p_value": p_value,
+        "inserted": inserted,
+        "deleted": deleted
+    }
 
-    # Finding the pattern
-    occurrences = find_pattern(data, pattern)
+def find_patterns(bed_data, gene_list, len_list, diff_list, tol_len, tol_diff):
+    matches = []
+    n = len(gene_list)
 
-    match_results = []
-    
-    if occurrences:
-        for start, end, direction, matched_rows in occurrences:
-            exact_length_matches = 0
-            exact_diff_matches = 0
-            within_tolerance_length_matches = 0
-            within_tolerance_diff_matches = 0
+    for i in range(len(bed_data) - n + 1):
+        segment = bed_data[i:i+n]
+        result = match_pattern(gene_list, len_list, diff_list, segment, tol_len, tol_diff)
+        matches.append((i, i+n-1, 'forward', result))
 
-            prev_row = None
-            # Capture interval values
-            interval_values = []
-            for i, row in enumerate(matched_rows):
-                interval_values.append('_'.join(row))  # Join all row values with '_'
-                diff = compute_difference(row, prev_row)
-                
-                # Check for length and difference matches if not the first row
-                if i > 0:
-                    if float(row[3]) == target_lengths[i - 1]:
-                        exact_length_matches += 1
-                    else:
-                        within_tolerance, _ = is_within_tolerance(float(row[3]), target_lengths[i - 1], length_tolerance)
-                        if within_tolerance:
-                            within_tolerance_length_matches += 1
-                    
-                    if diff is not None and diff == target_differences[i - 1]:
-                        exact_diff_matches += 1
-                    else:
-                        if diff is not None:
-                            within_tolerance, _ = is_within_tolerance(diff, target_differences[i - 1], difference_tolerance)
-                            if within_tolerance:
-                                within_tolerance_diff_matches += 1
-                
-                prev_row = row  # Update prev_row for the next iteration
+    matches.sort(key=lambda x: x[3]['p_value'])
+    return matches[:3]
 
-            # Calculate p-value for the current match
-            total_tries = len(matched_rows) - 1  # Number of comparisons
-            p_value = calculate_p_value(exact_length_matches + exact_diff_matches, total_tries)
-            
-            # Append result for sorting
-            match_results.append({
-                'start': start,
-                'end': end,
-                'direction': direction,
-                'exact_length_matches': exact_length_matches,
-                'within_tolerance_length_matches': within_tolerance_length_matches,
-                'exact_diff_matches': exact_diff_matches,
-                'within_tolerance_diff_matches': within_tolerance_diff_matches,
-                'p_value': p_value,
-                'interval_values': '_'.join(interval_values)  # Join interval values
-            })
+def print_result(start, end, direction, result):
+    print(f"{start}\t{end}\t{direction}\t"
+          f"{result['match_exact']}\t"
+          f"{result['match_len']}\t"
+          f"{result['match_diff']}\t"
+          f"{result['p_value']:.5f}\t"
+          f"{','.join(g for _, g in result['inserted']) or '-'}\t"
+          f"{','.join(g for _, g in result['deleted']) or '-'}")
 
-        # Sort the results: first by p-value (ascending), then by total matches (descending)
-        match_results.sort(key=lambda x: (x['p_value'], -(x['exact_length_matches'] + x['exact_diff_matches'])))
+def main():
+    if len(sys.argv) != 7:
+        print("Usage: python3 updated_find_pattern_first_p-value_fixed.py <bed_file> <gene_list> <len_list> <diff_list> <tol_len> <tol_diff>")
+        sys.exit(1)
 
-        # Report the sorted results in a single line
-        print("Start\tEnd\tDirection\tExact_Length_Matches\tExact_Diff_Matches\tWithin_Tolerance_Length_Matches\tWithin_Tolerance_Diff_Matches\tP_value\tInterval_Values")
-        for result in match_results:
-            print(f"{result['start']}\t{result['end']}\t{result['direction']}\t"
-                  f"{result['exact_length_matches']}\t{result['exact_diff_matches']}\t"
-                  f"{result['within_tolerance_length_matches']}\t{result['within_tolerance_diff_matches']}\t"
-                  f"{result['p_value']:.5f}\t{result['interval_values']}")
+    bed_file = sys.argv[1]
+    gene_list = sys.argv[2].split(",")
+    len_list = list(map(int, sys.argv[3].split(",")))
+    diff_list = list(map(int, sys.argv[4].split(",")))
+    tol_len = int(sys.argv[5])
+    tol_diff = int(sys.argv[6])
 
-    else:
-        print("Pattern not found in the file.")
+    bed_data = read_bed_file(bed_file)
+    top_matches = find_patterns(bed_data, gene_list, len_list, diff_list, tol_len, tol_diff)
+
+    # Print header
+    print("Start\tEnd\tDirection\tExact_Length_Matches\tWithin_Tolerance_Length_Matches\tWithin_Tolerance_Diff_Matches\tP_value\tInserted_Genes\tDeleted_Genes")
+
+    for start, end, direction, result in top_matches:
+        print_result(start, end, direction, result)
+
 
 if __name__ == "__main__":
-    # Example: python script.py file.txt "pattern1,pattern2,pattern3" "length1,length2" "diff1,diff2" "length_tolerance" "diff_tolerance"
-    if len(sys.argv) != 7:
-        print("Usage: python script.py <file_name> <pattern> <lengths> <differences> <length_tolerance> <difference_tolerance>")
-        sys.exit(1)
-    
-    file_name = sys.argv[1]
-    pattern_str = sys.argv[2]
-    lengths_str = sys.argv[3]
-    differences_str = sys.argv[4]
-    length_tolerance_str = sys.argv[5]
-    difference_tolerance_str = sys.argv[6]
-    
-    main(file_name, pattern_str, lengths_str, differences_str, length_tolerance_str, difference_tolerance_str)
+    main()
