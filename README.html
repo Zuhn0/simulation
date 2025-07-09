@@ -176,13 +176,177 @@ Lets check for inversion of genes :  "python3 mutationsimulation.py short.bed mu
 
   Now search for this mutation in 'simulated_output.bed' file with " python3 updated_find_pattern_first_p-value_fixed.py simulated_output.bed "G2,G3,G4,G1,G2,G4,G2,G3,G1,G2,G4,G3,G4,G3,G3,G2,G1,G1,G4,G1,G1,G1" "995,943,891,-1023,1465,923,1010,1028,-1233,519,716,1190,1181,1413,941,995,-1168,-1082,742,-1107,-888,-823" "887,1340,2213,2066,801,1342,1173,2042,2573,756,1255,1099,988,1053,918,2302,3495,2068,2283,3027,2412" "200" "200" " 
 
-  Output :
+  Output
 Start   End     Direction       Exact_Length_Matches    Exact_Diff_Matches      Within_Tolerance_Length_Matches Within_Tolerance_Diff_Matches   P_value Interval_Values
 20      41      forward 0       11      9       0       0.50000 chr20_39218_40213_995_G2_chr21_41100_42043_943_G3_chr22_43383_44274_891_G4_chr23_45464_46487_1023_G1_chr24_47530_48995_1465_G2_chr25_49796_50719_923_G4_chr26_52061_53071_1010_G2_chr27_54244_55272_1028_G3_chr28_56081_57314_1233_G1_chr29_58654_59173_519_G2_chr30_59929_60645_716_G4_chr31_61900_63090_1190_G3_chr32_64189_65370_1181_G4_chr33_66358_67771_1413_G3_chr34_68824_69765_941_G3_chr35_70683_71678_995_G2_chr36_72812_73980_1168_G1_chr37_75225_76307_1082_G1_chr38_77293_78035_742_G4_chr39_79211_80318_1107_G1_chr40_81350_82238_888_G1_chr41_82939_83762_823_G1
 
 //THE STUDY SHOWS THAT updated_find_pattern_first_p-value_fixed.py FILE ONLY SEARCHES WHEN MUTATION IS DUPLICATION AND INVERSION . If the mutation is DELETION OR INSERSION It do not work .
   
-  
+  I have made changes in the 'updated_find_pattern_first_p-value_fixed.py' file and now it catches best 3 insertion and deletion location. 
+
+
+   short.bed : 
+                  chr70   139536  140930  1394    G3
+                  chr71   141742  142730  988     G3
+                  chr72   143529  144747  1218    G2
+                  chr73   145673  146526  853     G2
+                  chr74   147538  148544  1006    G2
+                  chr75   149673  150763  1090    G4
+                  chr76   151799  152779  980     G4
+                  chr77   154075  154739  664     G4
+                  chr78   155576  156644  1068    G3
+                  chr79   157166  158034  868     G3
+                  chr80   158709  159594  885     G3
+
+  Input : python3 mutationsimulation.py short.bed mutated_output.bed -i chr72:146528:800:G30 
+
+   mutated_output.bed:
+                        chr70   139536  140930  1394    G3
+                        chr71   141742  142730  988     G3
+                        chr72   143529  144747  1218    G2
+                        chr72   146528  147328  800     G30      //inserted 
+                        chr73   146473  147326  853     G2
+                        chr74   148338  149344  1006    G2
+                        chr75   150473  151563  1090    G4
+                        chr76   152599  153579  980     G4
+                        chr77   154875  155539  664     G4
+                        chr78   156376  157444  1068    G3
+                        chr79   157966  158834  868     G3
+                        chr80   159509  160394  885     G3
+
+simulated_output.bed (same as before) : 
+
+                        chr1    0       1142    1142    G2
+                        chr2    2209    3197    988     G3
+                        chr3    4373    5303    930     G4
+                        chr4    6053    7176    1123    G2
+                        chr5    8302    9198    896     G3
+                        chr6    10242   11151   909     G3
+                        chr7    12388   13451   1063    G1
+                        chr8    14651   15392   741     G3
+                        chr9    16229   16923   694     G1
+                        chr10   17809   18565   756     G4
+                        chr11   19351   21133   1782    G4
+                        chr12   22071   22997   926     G4
+                        chr13   24301   25334   1033    G3
+                        chr14   26530   27741   1211    G2
+                        chr15   28864   29709   845     G1
+                        chr16   30513   31823   1310    G1
+                        chr17   33143   34325   1182    G4
+                        chr18   35177   36549   1372    G2
+                        chr19   37412   38311   899     G2
+                        chr20   39218   40213   995     G2
+                        chr21   41100   42043   943     G3
+                        chr22   43383   44274   891     G4
+                        chr23   45464   46487   1023    G1
+                        chr24   47530   48995   1465    G2
+                        chr25   49796   50719   923     G4
+                        chr26   52061   53071   1010    G2
+                        chr27   54244   55272   1028    G3
+                        chr28   56081   57314   1233    G1
+                        chr29   58654   59173   519     G2
+                        chr30   59929   60645   716     G4
+                        chr31   61900   63090   1190    G3
+                        chr32   64189   65370   1181    G4
+                        chr33   66358   67771   1413    G3
+                        chr34   68824   69765   941     G3
+                        chr35   70683   71678   995     G2
+                        chr36   72812   73980   1168    G1
+                        chr37   75225   76307   1082    G1
+                        chr38   77293   78035   742     G4
+                        chr39   79211   80318   1107    G1
+                        chr40   81350   82238   888     G1
+                        chr41   82939   83762   823     G1
+                        chr42   84404   85587   1183    G1
+                        chr43   86569   87569   1000    G3
+                        chr44   88567   89596   1029    G3
+                        chr45   90708   91776   1068    G1
+                        chr46   92771   93431   660     G2
+                        chr47   94584   95765   1181    G4
+                        chr48   96660   98070   1410    G3
+                        chr49   99133   99808   675     G3
+                        chr50   100947  102377  1430    G2
+                        chr51   103436  104405  969     G2
+                        chr52   105434  106450  1016    G2
+                        chr53   107475  108498  1023    G3
+                        chr54   109286  110448  1162    G1
+                        chr55   111476  112057  581     G3
+                        chr56   113017  114027  1010    G4
+                        chr57   115465  116765  1300    G3
+                        chr58   117784  118668  884     G4
+                        chr59   119759  120559  800     G1
+                        chr60   120940  121791  851     G4
+                        chr61   123164  124253  1089    G1
+                        chr62   125424  126419  995     G1
+                        chr63   126936  128043  1107    G4
+                        chr64   129018  130178  1160    G4
+                        chr65   130753  131754  1001    G3
+                        chr66   132698  133685  987     G3
+                        chr67   134174  135553  1379    G4
+                        chr68   136115  136853  738     G2
+                        chr69   138082  139084  1002    G1
+                        chr70   139536  140930  1394    G3
+                        chr71   141742  142730  988     G3
+                        chr72   143529  144747  1218    G2
+                        chr73   145673  146526  853     G2
+                        chr74   147538  148544  1006    G2
+                        chr75   149673  150763  1090    G4
+                        chr76   151799  152779  980     G4
+                        chr77   154075  154739  664     G4
+                        chr78   155576  156644  1068    G3
+                        chr79   157166  158034  868     G3
+                        chr80   158709  159594  885     G3
+                        chr81   160873  162153  1280    G1
+                        chr82   162962  164216  1254    G2
+                        chr83   165213  166315  1102    G1
+                        chr84   167342  168682  1340    G4
+                        chr85   169865  170880  1015    G4
+                        chr86   171972  173135  1163    G1
+                        chr87   174100  175532  1432    G4
+                        chr88   176515  177789  1274    G2
+                        chr89   178807  179906  1099    G2
+                        chr90   180765  181826  1061    G3
+                        chr91   182998  183987  989     G4
+                        chr92   184579  185567  988     G3
+                        chr93   186417  187237  820     G4
+                        chr94   188097  189275  1178    G4
+                        chr95   190383  191190  807     G1
+                        chr96   192033  192906  873     G3
+                        chr97   194210  194969  759     G4
+                        chr98   195925  197044  1119    G2
+                        chr99   198057  199559  1502    G3
+                        chr100  200787  201771  984     G3
+
+
+ Now searching the mutated gene (inserted) in big genome (simulated_output.bed) ;
+
+
+input :python3 convert_bed_to_query.py mutated_output.bed
+output : G3,G3,G2,G30,G2,G2,G4,G4,G4,G3,G3,G3 1394,988,1218,800,853,1006,1090,980,664,1068,868,885 812,799,1781,-855,1012,1129,1036,1296,837,522,675
+
+input : python3 updated_find_pattern_first_p-value_fixed.py simulated_output.bed "G3,G3,G2,G30,G2,G2,G4,G4,G4,G3,G3,G3" "1394,988,1218,800,853,1006,1090,980,664,1068,868,885" "812,799,1781,-855,1012,1129,1036,1296,837,522,675" "200" "200"
+
+Output : Start   End     Direction       Exact_Length_Matches    Within_Tolerance_Length_Matches    Within_Tolerance_Diff_Matches   P_value Inserted_Genes  Deleted_Genes
+68      79      forward 10      11      10      0.00000 G1      G30
+69      80      forward 10      11      10      0.00000 G1      G30
+70      81      forward 8       9       9       0.00000 G1,G2   G3,G30
+
+
+//IT FINDS THE BEST 3 POSITION ACCORDING TO P VALUES . 
+ Same works for deletion if done using command " python3 mutationsimulation.py short.bed mutated_output.bed -d G4@149673" 
+
+           
+
+
+
+ 
+
+
+     
+
+           
+
+   
    
 
      
